@@ -139,6 +139,10 @@ app.post('/api/create-demo-files', (req, res) => {
     res.status(500).send('Error creating files');
   }
 });
+// Serve dashboard.html at root
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
+});
 
 // --- Start Server ---
 server.listen(PORT, () => {
