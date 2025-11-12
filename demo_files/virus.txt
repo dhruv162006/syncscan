@@ -1,0 +1,2 @@
+This is a benign test file. Warning: malware detected!
+Eval and system calls found.

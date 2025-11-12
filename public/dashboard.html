@@ -1,0 +1,1428 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth" >
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ScanSync - Next-Gen Malware Detection</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@3.3.2/dist/tailwind.min.css" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <script src="/socket.io/socket.io.js"></script>
+  <style>
+    /* Premium UI Refactor: improved layout and animation - functionality unchanged */
+
+    @import url('https://fonts.googleapis.com/css2?family=Satoshi:wght@300;500;700&family=JetBrains+Mono:wght@400;600&display=swap');
+
+    /* Reset and base */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    html {
+      scroll-behavior: smooth;
+    }
+    body {
+      font-family: 'Satoshi', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #0a0a0f;
+      color: #e1e1e6;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      transition: background-color 0.5s ease, color 0.5s ease;
+    }
+
+    /* Dark/Light Mode - via body.dark */
+    body.light {
+      background: #f9fafb;
+      color: #18181b;
+    }
+
+    /* Animated Mesh Gradient Background with subtle glassmorphic effect */
+    .mesh-background {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      background: 
+        radial-gradient(circle at 10% 20%, rgba(102, 126, 234, 0.12) 0%, transparent 50%),
+        radial-gradient(circle at 90% 80%, rgba(118, 75, 162, 0.12) 0%, transparent 50%),
+        radial-gradient(circle at 50% 50%, rgba(236, 72, 153, 0.06) 0%, transparent 50%);
+      animation: meshMove 24s ease-in-out infinite;
+      filter: saturate(1.2) contrast(1.1);
+    }
+    @keyframes meshMove {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      33% { transform: translate(28px, -45px) scale(1.05); }
+      66% { transform: translate(-23px, 25px) scale(0.95); }
+    }
+
+    /* Noise Overlay - Very subtle for texture */
+    .noise-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      opacity: 0.015;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+      pointer-events: none;
+    }
+
+    /* Container */
+    .main-container {
+      position: relative;
+      z-index: 10;
+      max-width: 1920px;
+      margin: 0 auto;
+      padding: 88px 96px;
+      transition: padding 0.3s ease;
+    }
+    @media (max-width: 1400px) {
+      .main-container {
+        padding: 64px 48px;
+      }
+    }
+    @media (max-width: 768px) {
+      .main-container {
+        padding: 48px 24px;
+      }
+    }
+
+    /* Premium Navigation */
+    .top-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 72px;
+      padding: 24px 48px;
+      background: rgba(25, 25, 30, 0.45);
+      backdrop-filter: saturate(180%) blur(24px);
+      border: 1px solid rgba(255 255 255 / 0.08);
+      border-radius: 28px;
+      animation: slideDown 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+      user-select: none;
+      box-shadow:
+        0 12px 40px rgba(102 126 234 / 0.4);
+    }
+    @keyframes slideDown {
+      from {
+        opacity: 0;
+        transform: translateY(-28px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    @media (max-width: 768px) {
+      .top-nav {
+        padding: 20px 24px;
+        margin-bottom: 48px;
+      }
+    }
+
+    .logo-section {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+    }
+
+    /* 3D Floating Logo Icon */
+    .logo-icon-3d {
+      width: 56px;
+      height: 56px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 30px;
+      font-weight: 900;
+      color: #f9fafb;
+      box-shadow:
+        0 24px 72px rgba(102, 126, 234, 0.45),
+        inset 0 1px 0 rgba(255, 255, 255, 0.15);
+      position: relative;
+      animation: float 6.5s ease-in-out infinite;
+      transform-style: preserve-3d;
+      user-select: none;
+      cursor: default;
+    }
+    .logo-icon-3d::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 18px;
+      background: linear-gradient(145deg, rgba(255 255 255 / 0.35), transparent);
+      opacity: 0.6;
+    }
+    @keyframes float {
+      0%, 100% { transform: translateY(0) rotateX(0deg); }
+      50% { transform: translateY(-14px) rotateX(5deg); }
+    }
+
+    .logo-text h1 {
+      font-size: 34px;
+      font-weight: 800;
+      letter-spacing: -1px;
+      background: linear-gradient(135deg, #fff 0%, #bbb 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      user-select: none;
+      cursor: default;
+      font-family: 'Geist Sans', 'Satoshi', 'Inter', sans-serif;
+    }
+    .logo-text p {
+      font-size: 14px;
+      color: #888;
+      font-weight: 600;
+      line-height: 1.2;
+      margin-top: 3px;
+      letter-spacing: 0.3px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Nav Actions */
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+    .status-chip {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 24px;
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.25);
+      border-radius: 32px;
+      font-size: 14px;
+      font-weight: 700;
+      color: #10b981;
+      user-select: none;
+      box-shadow:
+        0 0 10px rgba(16, 185, 129, 0.6);
+      cursor: default;
+    }
+    .status-pulse {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #10b981;
+      box-shadow: 0 0 0 0 rgba(16, 185, 129, 1);
+      animation: statusPulse 2.1s infinite;
+    }
+    @keyframes statusPulse {
+      0% {
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.8);
+      }
+      70% {
+        box-shadow: 0 0 0 16px rgba(16, 185, 129, 0);
+      }
+      100% {
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+      }
+    }
+    .profile-btn {
+      width: 48px;
+      height: 48px;
+      border-radius: 16px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 20px;
+      color: #f9fafb;
+      cursor: pointer;
+      box-shadow: 0 10px 28px rgba(102, 126, 234, 0.38);
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+      user-select: none;
+      user-drag: none;
+    }
+    .profile-btn:hover,
+    .profile-btn:focus-visible {
+      transform: translateY(-3px);
+      box-shadow: 0 16px 40px rgba(102, 126, 234, 0.52);
+      outline-offset: 2px;
+      outline: 2px solid #667eea;
+    }
+
+    /* Stats Cards Row */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 28px;
+      margin-bottom: 64px;
+    }
+    @media (max-width: 1400px) {
+      .stats-row {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+    @media (max-width: 640px) {
+      .stats-row {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .stat-card {
+      background: rgba(25, 25, 30, 0.45);
+      backdrop-filter: saturate(150%) blur(40px);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 28px;
+      padding: 36px 32px;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+      animation: slideUp 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+      animation-fill-mode: both;
+      user-select: none;
+      box-shadow:
+        0 16px 48px rgba(0, 0, 0, 0.38);
+    }
+    .stat-card:hover {
+      transform: translateY(-6px);
+      border-color: rgba(102, 126, 234, 0.28);
+      box-shadow:
+        0 40px 80px rgba(102, 126, 234, 0.25);
+    }
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, rgba(255 255 255 / 0.11), transparent);
+    }
+    .stat-icon {
+      width: 56px;
+      height: 56px;
+      border-radius: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 24px;
+      font-size: 24px;
+      background: rgba(255 255 255 / 0.08);
+      border: 1px solid rgba(255 255 255 / 0.1);
+      color: #cbd5e1;
+      user-select: none;
+      transition: background-color 0.3s ease;
+    }
+    .stat-value {
+      font-size: 42px;
+      font-weight: 800;
+      letter-spacing: -2px;
+      margin-bottom: 12px;
+      background: linear-gradient(135deg, #fff 0%, #aaa 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      user-select: text;
+    }
+    .stat-label {
+      font-size: 13px;
+      color: #888;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      user-select: none;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Main Grid */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1.4fr 1fr;
+      gap: 32px;
+      margin-bottom: 40px;
+    }
+    @media (max-width: 1400px) {
+      .main-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Premium Glass Card */
+    .glass-card {
+      background: rgba(25, 25, 30, 0.45);
+      backdrop-filter: saturate(180%) blur(34px);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 28px;
+      padding: 44px 40px;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+      box-shadow:
+        0 18px 50px rgba(0, 0, 0, 0.35);
+      user-select: none;
+    }
+    .glass-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, rgba(255 255 255 / 0.11), transparent);
+      pointer-events: none;
+    }
+    .glass-card::after {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 220%;
+      height: 220%;
+      background: linear-gradient(45deg, transparent, rgba(255 255 255 / 0.04), transparent);
+      animation: cardShine 9s linear infinite;
+      pointer-events: none;
+    }
+    @keyframes cardShine {
+      0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+      100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
+    }
+    .glass-card:hover {
+      transform: translateY(-6px);
+      border-color: rgba(102, 126, 234, 0.22);
+      box-shadow:
+        0 48px 96px rgba(102, 126, 234, 0.32);
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 36px;
+      position: relative;
+      z-index: 1;
+      user-select: none;
+    }
+    .card-title {
+      font-size: 19px;
+      font-weight: 700;
+      color: #f1f1f6;
+      letter-spacing: -0.4px;
+      font-family: 'Geist Sans', 'Satoshi', 'Inter', sans-serif;
+    }
+    .card-badge {
+      padding: 10px 18px;
+      background: rgba(102, 126, 234, 0.12);
+      border: 1px solid rgba(102, 126, 234, 0.22);
+      border-radius: 24px;
+      font-size: 13px;
+      color: #667eea;
+      font-weight: 700;
+      user-select: none;
+      font-family: 'JetBrains Mono', monospace;
+      letter-spacing: 0.5px;
+    }
+
+    /* Modern Client Cards */
+    .clients-container {
+      position: relative;
+      z-index: 10;
+      max-height: 520px;
+      overflow-y: auto;
+      padding-right: 10px;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(102, 126, 234, 0.3) transparent;
+    }
+    .clients-container::-webkit-scrollbar {
+      width: 10px;
+    }
+    .clients-container::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .clients-container::-webkit-scrollbar-thumb {
+      background: rgba(102, 126, 234, 0.3);
+      border-radius: 12px;
+    }
+
+    .client-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 24px 32px;
+      margin-bottom: 18px;
+      background: rgba(255 255 255 / 0.02);
+      border: 1px solid rgba(255 255 255 / 0.05);
+      border-radius: 22px;
+      transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      position: relative;
+      overflow: hidden;
+      cursor: pointer;
+      user-select: none;
+      box-shadow: 0 8px 20px rgba(102 126 234 / 0.15);
+    }
+    .client-card::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 4px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      transform: scaleY(0);
+      transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      border-radius: 0 12px 12px 0;
+    }
+    .client-card:hover {
+      background: rgba(255 255 255 / 0.04);
+      border-color: rgba(102, 126, 234, 0.3);
+      transform: translateX(8px);
+      box-shadow: -10px 0 28px rgba(102, 126, 234, 0.12);
+    }
+    .client-card:hover::before {
+      transform: scaleY(1);
+    }
+
+    .client-left {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+    }
+    .client-avatar-wrapper {
+      position: relative;
+    }
+    .client-avatar {
+      width: 56px;
+      height: 56px;
+      border-radius: 18px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      font-weight: 900;
+      box-shadow: 0 12px 36px rgba(102, 126, 234, 0.45);
+      position: relative;
+      user-select: none;
+    }
+    .client-avatar::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 18px;
+      background: linear-gradient(145deg, rgba(255 255 255 / 0.3), transparent);
+      opacity: 0.55;
+    }
+    .online-badge {
+      position: absolute;
+      bottom: -3px;
+      right: -3px;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #10b981;
+      border: 3px solid #0a0a0f;
+      box-shadow: 0 0 16px #10b981;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0% {
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+      }
+      70% {
+        box-shadow: 0 0 0 14px rgba(16, 185, 129, 0);
+      }
+      100% {
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+      }
+    }
+    .client-info h3 {
+      font-size: 18px;
+      font-weight: 800;
+      color: #f1f1f6;
+      margin-bottom: 8px;
+      letter-spacing: -0.4px;
+      font-family: 'Geist Sans', 'Satoshi', sans-serif;
+      user-select: text;
+    }
+    .client-info p {
+      font-size: 14px;
+      color: #8b8b9f;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 600;
+      user-select: text;
+      letter-spacing: 0.15px;
+    }
+
+    .client-right {
+      text-align: right;
+      user-select: none;
+    }
+    .client-time {
+      font-size: 13px;
+      color: #9999aa;
+      font-weight: 500;
+      user-select: none;
+      font-family: 'JetBrains Mono', monospace;
+      margin-bottom: 6px;
+      letter-spacing: 0.3px;
+    }
+    .client-ip {
+      font-size: 12px;
+      color: #6b6b7d;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 500;
+      user-select: none;
+      letter-spacing: 0.4px;
+    }
+
+    /* File Selector */
+    .file-list {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      margin-bottom: 36px;
+      max-height: 290px;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(102, 126, 234, 0.3) transparent;
+    }
+    .file-list::-webkit-scrollbar {
+      width: 10px;
+      height: 10px;
+    }
+    .file-list::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .file-list::-webkit-scrollbar-thumb {
+      background: rgba(102, 126, 234, 0.3);
+      border-radius: 12px;
+    }
+    .file-option {
+      padding: 20px 28px;
+      background: rgba(255 255 255 / 0.02);
+      border: 1px solid rgba(255 255 255 / 0.06);
+      border-radius: 20px;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      position: relative;
+      user-select: none;
+      font-size: 15px;
+      font-weight: 600;
+      color: #bbb;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .file-option::before {
+      content: '📄';
+      font-size: 22px;
+      opacity: 0.65;
+      transition: all 0.3s ease;
+      user-select: none;
+    }
+    .file-option:hover {
+      background: rgba(255 255 255 / 0.06);
+      border-color: rgba(102, 126, 234, 0.3);
+      transform: translateX(6px);
+      color: #ddd;
+    }
+    .file-option:hover::before {
+      opacity: 1;
+      transform: scale(1.15);
+    }
+    .file-option input[type="radio"] {
+      width: 20px;
+      height: 20px;
+      accent-color: #667eea;
+      cursor: pointer;
+      user-select: none;
+    }
+    .file-option label {
+      flex: 1;
+      cursor: pointer;
+      user-select: none;
+    }
+    .file-option:has(input:checked) {
+      background: rgba(102, 126, 234, 0.15);
+      border-color: rgba(102, 126, 234, 0.42);
+      color: #eef2ff;
+      font-weight: 700;
+      box-shadow: 0 8px 26px rgba(102, 126, 234, 0.3);
+    }
+    .file-option:has(input:checked) label {
+      color: #eef2ff;
+    }
+
+    /* Premium Buttons */
+    .btn-premium {
+      width: 100%;
+      padding: 20px 36px;
+      border: none;
+      border-radius: 20px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      position: relative;
+      overflow: hidden;
+      letter-spacing: 0.35px;
+      user-select: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      box-shadow: 0 14px 48px rgba(102, 126, 234, 0.38);
+    }
+    .btn-premium::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 0;
+      height: 0;
+      border-radius: 50%;
+      background: rgba(255 255 255 / 0.22);
+      transform: translate(-50%, -50%);
+      transition: width 0.65s ease, height 0.65s ease;
+      pointer-events: none;
+    }
+    .btn-premium:hover::before {
+      width: 420px;
+      height: 420px;
+    }
+
+    .btn-gradient {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #eef2ff;
+      box-shadow: 0 18px 56px rgba(102, 126, 234, 0.45);
+    }
+    .btn-gradient:hover {
+      box-shadow: 0 22px 64px rgba(102, 126, 234, 0.6);
+      transform: translateY(-3px);
+    }
+
+    .btn-secondary {
+      background: rgba(255 255 255 / 0.06);
+      color: #eef2ff;
+      border: 1px solid rgba(255 255 255 / 0.16);
+      box-shadow: 0 6px 24px rgba(255 255 255 / 0.04);
+    }
+    .btn-secondary:hover {
+      background: rgba(255 255 255 / 0.12);
+      border-color: rgba(255 255 255 / 0.3);
+      box-shadow: 0 10px 38px rgba(255 255 255 / 0.12);
+    }
+
+    .btn-outline {
+      background: transparent;
+      color: #888;
+      border: 1px solid rgba(255 255 255 / 0.12);
+      box-shadow: none;
+    }
+    .btn-outline:hover {
+      background: rgba(255 255 255 / 0.02);
+      border-color: rgba(255 255 255 / 0.3);
+      color: #eef2ff;
+    }
+
+    .btn-icon {
+      font-size: 18px;
+      user-select: none;
+    }
+
+    /* Scan Results Table */
+    .results-section {
+      grid-column: 1 / -1;
+    }
+    .table-container {
+      border: 1px solid rgba(255 255 255 / 0.05);
+      border-radius: 24px;
+      overflow: hidden;
+      position: relative;
+      z-index: 15;
+      user-select: none;
+      background: rgba(25, 25, 30, 0.6);
+      backdrop-filter: saturate(180%) blur(24px);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-feature-settings: 'tnum';
+    }
+    thead {
+      background: rgba(255 255 255 / 0.04);
+      backdrop-filter: blur(12px);
+    }
+    th {
+      padding: 22px 40px;
+      text-align: left;
+      font-size: 13px;
+      font-weight: 700;
+      color: #9999aa;
+      text-transform: uppercase;
+      letter-spacing: 1.3px;
+      border-bottom: 1px solid rgba(255 255 255 / 0.05);
+      user-select: none;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    td {
+      padding: 30px 40px;
+      border-bottom: 1px solid rgba(255 255 255 / 0.04);
+      font-size: 15px;
+      font-weight: 500;
+      color: #cbd5e1;
+      background-clip: padding-box;
+    }
+    tbody tr {
+      transition: background-color 0.3s ease, transform 0.3s ease;
+      position: relative;
+      cursor: default;
+    }
+    tbody tr:hover {
+      background: rgba(255 255 255 / 0.06);
+      transform: translateX(4px);
+    }
+    tbody tr::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 4px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      transform: scaleX(0);
+      transition: transform 0.3s ease;
+      border-radius: 0 14px 14px 0;
+    }
+    tbody tr:hover::before {
+      transform: scaleX(1);
+    }
+
+    .result-client-cell {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      user-select: text;
+      font-weight: 700;
+      color: #e1e1e6;
+    }
+    .result-avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 16px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      font-weight: 900;
+      box-shadow: 0 12px 36px rgba(102, 126, 234, 0.3);
+      user-select: none;
+      color: #fff;
+      position: relative;
+    }
+    .result-info h4 {
+      font-size: 16px;
+      font-weight: 700;
+      color: #f1f1f6;
+      margin-bottom: 4px;
+      user-select: text;
+    }
+    .result-info p {
+      font-size: 13px;
+      color: #777;
+      font-family: 'JetBrains Mono', monospace;
+      user-select: text;
+    }
+    .hash-mono {
+      font-family: 'JetBrains Mono', monospace;
+      color: #888;
+      font-size: 13px;
+      font-weight: 500;
+      user-select: text;
+      letter-spacing: 0.1em;
+      font-variant-numeric: tabular-nums;
+    }
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 22px;
+      border-radius: 16px;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+      user-select: none;
+      min-width: 116px;
+      justify-content: center;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .status-clean {
+      background: rgba(16, 185, 129, 0.14);
+      color: #10b981;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      box-shadow: 0 0 12px rgba(16, 185, 129, 0.3);
+    }
+    .status-threat {
+      background: rgba(239, 68, 68, 0.14);
+      color: #ef4444;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      box-shadow: 0 0 12px rgba(239, 68, 68, 0.3);
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 80px 40px;
+      color: #777;
+      font-size: 15px;
+      font-weight: 500;
+      user-select: none;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .empty-icon {
+      font-size: 52px;
+      margin-bottom: 18px;
+      opacity: 0.3;
+      user-select: none;
+    }
+
+    /* Scrollbar smoothifying */
+    ::-webkit-scrollbar {
+      width: 10px;
+      height: 10px;
+      transition: background-color 0.2s ease;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+      border-radius: 12px;
+      user-select: none;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255 255 255 / 0.1);
+      border-radius: 12px;
+      border: 2px solid transparent;
+      background-clip: padding-box;
+      user-select: none;
+      transition: background-color 0.3s ease;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(255 255 255 / 0.15);
+      background-clip: padding-box;
+    }
+
+    /* Animations for appearance */
+    .slide-in-left {
+      animation: slideInLeft 0.85s cubic-bezier(0.16, 1, 0.3, 1);
+      animation-fill-mode: both;
+    }
+    .slide-in-right {
+      animation: slideInRight 0.85s cubic-bezier(0.16, 1, 0.3, 1);
+      animation-fill-mode: both;
+    }
+    @keyframes slideInLeft {
+      from {
+        opacity: 0;
+        transform: translateX(-64px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+    @keyframes slideInRight {
+      from {
+        opacity: 0;
+        transform: translateX(64px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+    /* Enhanced File Input & Upload Button Styling for Premium Look */
+#fileInput {
+  opacity: 0;
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+  z-index: 10;
+  top: 0;
+  left: 0;
+}
+
+/* Container to hold the styled file input label */
+.upload-wrapper {
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+  margin-bottom: 1rem;
+  font-family: 'Satoshi', 'Inter', sans-serif;
+}
+
+/* Styled visible custom file selector button */
+.custom-file-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  background: rgba(255 255 255 / 0.08);
+  border-radius: 20px;
+  border: 1px solid rgba(255 255 255 / 0.12);
+  font-size: 16px;
+  font-weight: 600;
+  color: #cbd5e1;
+  cursor: pointer;
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+  user-select: none;
+  box-shadow: 0 8px 24px rgba(102, 126, 234, 0.15);
+}
+
+.custom-file-label:hover,
+.custom-file-label:focus {
+  background: rgba(255 255 255 / 0.14);
+  border-color: #667eea;
+  color: #eef2ff;
+  outline: none;
+  box-shadow: 0 12px 36px rgba(102, 126, 234, 0.35);
+}
+
+/* Display selected filename */
+.file-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 70%;
+  user-select: text;
+  font-weight: 700;
+  color: #eef2ff;
+}
+
+/* Update Upload button style */
+#uploadForm button[type="submit"] {
+  padding: 14px 32px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  border-radius: 20px;
+  font-weight: 700;
+  font-size: 16px;
+  color: #fff;
+  box-shadow: 0 16px 48px rgba(102, 126, 234, 0.38);
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease;
+  user-select: none;
+}
+#uploadForm button[type="submit"]:hover,
+#uploadForm button[type="submit"]:focus {
+  background: linear-gradient(135deg, #5a6cd3 0%, #633d99 100%);
+  box-shadow: 0 20px 60px rgba(102, 126, 234, 0.55);
+  transform: translateY(-3px);
+  outline: none;
+}
+
+  </style>
+</head>
+<body class="dark">
+
+  <!-- Animated Background -->
+  <div class="mesh-background"></div>
+  <div class="noise-overlay"></div>
+
+  <div class="main-container" role="main" aria-live="polite">
+    <!-- Premium Navigation -->
+    <nav class="top-nav" aria-label="Primary navigation">
+      <div class="logo-section">
+        <div class="logo-icon-3d" aria-hidden="true" tabindex="-1">S</div>
+        <div class="logo-text">
+          <h1>ScanSync</h1>
+          <p>Next-Gen Threat Detection</p>
+        </div>
+      </div>
+      <div class="nav-actions">
+        <div class="status-chip" aria-live="assertive" role="status" aria-atomic="true" aria-label="System status: Online">
+          <div class="status-pulse"></div>
+          System Online
+        </div>
+        <button class="profile-btn" aria-label="User profile menu" aria-haspopup="true" aria-expanded="false" type="button">A</button>
+      </div>
+    </nav>
+
+    <!-- Stats Row -->
+    <section class="stats-row" aria-label="System statistics and overview">
+      <div class="stat-card" role="region" aria-labelledby="activeClientsLabel" tabindex="0">
+        <div class="stat-icon" aria-hidden="true">🔗</div>
+        <div class="stat-value" id="statClients" aria-live="polite">0</div>
+        <div class="stat-label" id="activeClientsLabel">Active Clients</div>
+      </div>
+      <div class="stat-card" role="region" aria-labelledby="scansCompletedLabel" tabindex="0">
+        <div class="stat-icon" aria-hidden="true">📊</div>
+        <div class="stat-value" id="statScans" aria-live="polite">0</div>
+        <div class="stat-label" id="scansCompletedLabel">Scans Completed</div>
+      </div>
+      <div class="stat-card" role="region" aria-labelledby="threatsDetectedLabel" tabindex="0">
+        <div class="stat-icon" aria-hidden="true">⚠️</div>
+        <div class="stat-value" id="statThreats" aria-live="polite">0</div>
+        <div class="stat-label" id="threatsDetectedLabel">Threats Detected</div>
+      </div>
+      <div class="stat-card" role="region" aria-labelledby="detectionRateLabel" tabindex="0">
+        <div class="stat-icon" aria-hidden="true">✅</div>
+        <div class="stat-value" aria-live="polite">99.8%</div>
+        <div class="stat-label" id="detectionRateLabel">Detection Rate</div>
+      </div>
+    </section>
+
+    <!-- Main Grid -->
+    <div class="main-grid">
+      <!-- Connected Clients -->
+      <section class="glass-card slide-in-left" aria-label="Connected Clients section" style="animation-delay: 0.1s">
+        <header class="card-header">
+          <h2 class="card-title">Connected Clients</h2>
+          <div class="card-badge" id="clientsBadge" aria-live="polite" aria-atomic="true">0 Online</div>
+        </header>
+        <div class="clients-container" id="clientsList" tabindex="0" aria-live="polite" aria-relevant="additions removals">
+          <div class="empty-state">
+            <div class="empty-icon" aria-hidden="true">🔌</div>
+            Waiting for clients to connect...
+          </div>
+        </div>
+      </section>
+
+      <!-- Right Column -->
+      <div>
+        <!-- Demo Files -->
+        <section class="glass-card slide-in-right" aria-label="Demo Files section" style="animation-delay: 0.2s; margin-bottom: 30px;">
+          <header class="card-header">
+            <h2 class="card-title">Demo Files</h2>
+          </header>
+          <div class="file-list" id="filesList" tabindex="0" aria-live="polite" aria-relevant="additions removals">
+            <div class="empty-state" style="padding: 40px 20px;">
+              <div class="empty-icon" aria-hidden="true">📁</div>
+              Loading files...
+            </div>
+          </div>
+        </section>
+
+        <!-- Upload File Section -->
+        <section class="max-w-4xl mx-auto mt-8 p-6 bg-white bg-opacity-90 dark:bg-opacity-10 rounded-xl shadow-lg" aria-label="Upload File for Scanning">
+          
+          <section class="max-w-4xl mx-auto mt-8 p-4 bg-white bg-opacity-10 backdrop-blur-md rounded-xl shadow-lg" aria-label="Upload File for Scanning">
+  <h3 class="text-lg font-semibold mb-6 text-white">Upload File for Scanning</h3>
+  <form id="uploadForm" enctype="multipart/form-data" class="flex items-center space-x-4 relative" novalidate>
+    <div class="upload-wrapper flex-1 relative">
+      <input type="file" id="fileInput" name="file" required aria-required="true" aria-label="Choose file to upload" />
+      <label for="fileInput" class="custom-file-label" tabindex="0" role="button" aria-describedby="fileNameDisplay">
+        <span class="file-name" id="fileNameDisplay">Choose a file...</span>
+        <svg aria-hidden="true" focusable="false" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ml-3" viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="M4 12h16"/></svg>
+      </label>
+    </div>
+    <button type="submit" aria-label="Upload selected file">Upload</button>
+  </form>
+  <p id="uploadStatus" class="mt-3 text-sm font-medium hidden" role="alert" aria-live="polite"></p>
+</section>
+
+          <p id="uploadStatus" class="mt-3 text-sm font-medium hidden"></p>
+        </section>
+
+        <!-- Scan Controls -->
+        <section class="glass-card slide-in-right" aria-label="Scan Controls section" style="animation-delay: 0.3s">
+          <header class="card-header">
+            <h2 class="card-title">Scan Controls</h2>
+          </header>
+          <button id="startAllBtn" class="btn-premium btn-gradient" aria-label="Scan all clients">
+            <span style="position: relative; z-index: 1;">
+              <span class="btn-icon">🚀</span>
+              Scan All Clients
+            </span>
+          </button>
+          <button id="startTwoBtn" class="btn-premium btn-secondary" aria-label="Scan first two clients" style="margin-top:8px;">
+            <span style="position: relative; z-index: 1;">
+              <span class="btn-icon">⚡</span>
+              Scan First 2 Clients
+            </span>
+          </button>
+          <button id="createFilesBtn" class="btn-premium btn-outline" aria-label="Create demo files" style="margin-top:8px;">
+            <span style="position: relative; z-index: 1;">
+              <span class="btn-icon">📦</span>
+              Create Demo Files
+            </span>
+          </button>
+        </section>
+      </div>
+
+      <!-- Scan Results -->
+      <section class="glass-card results-section slide-in-right" aria-label="Scan Results" style="animation-delay: 0.4s" tabindex="0">
+        <header class="card-header">
+          <h2 class="card-title">Scan Results</h2>
+        </header>
+        <div class="table-container">
+          <table role="table" aria-describedby="resultsDesc" aria-live="polite" aria-relevant="additions">
+            <thead>
+              <tr>
+                <th scope="col">Client</th>
+                <th scope="col">Filename</th>
+                <th scope="col">SHA-256 Hash</th>
+                <th scope="col">Status</th>
+                <th scope="col">Timestamp</th>
+              </tr>
+            </thead>
+            <tbody id="resultsBody" role="rowgroup">
+              <tr>
+                <td colspan="5" role="row">
+                  <div class="empty-state" aria-live="polite">
+                    <div class="empty-icon" aria-hidden="true">📋</div>
+                    No scan results yet
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    // Preserved original functionality with smoothly refined UI
+
+    const socket = io("http://localhost:3000");
+    let totalScans = 0;
+    let totalThreats = 0;
+
+    // Update Stats
+    function updateStats(clients) {
+      document.getElementById('statClients').textContent = clients;
+      document.getElementById('statScans').textContent = totalScans;
+      document.getElementById('statThreats').textContent = totalThreats;
+    }
+
+    // Update Connected Clients
+    socket.on('clients_update', clients => {
+      const container = document.getElementById('clientsList');
+      const badge = document.getElementById('clientsBadge');
+      
+      badge.textContent = `${clients.length} Online`;
+      updateStats(clients.length);
+      
+      if (clients.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state" tabindex="0" role="alert">
+            <div class="empty-icon" aria-hidden="true">🔌</div>
+            Waiting for clients to connect...
+          </div>
+        `;
+        return;
+      }
+      
+      container.innerHTML = clients.map(c => `
+        <div class="client-card" role="listitem" tabindex="0" aria-label="Client ${c.clientName}, ID ${c.clientId.slice(0, 12)}. Last seen at ${new Date(c.lastSeen).toLocaleTimeString()} from IP ${c.ip || 'N/A'}">
+          <div class="client-left">
+            <div class="client-avatar-wrapper">
+              <div class="client-avatar" aria-hidden="true">${c.clientName.charAt(0).toUpperCase()}</div>
+              <div class="online-badge" aria-label="Online"></div>
+            </div>
+            <div class="client-info">
+              <h3>${c.clientName}</h3>
+              <p>${c.clientId.slice(0, 12)}</p>
+            </div>
+          </div>
+          <div class="client-right">
+            <div class="client-time">${new Date(c.lastSeen).toLocaleTimeString()}</div>
+            <div class="client-ip">${c.ip || 'N/A'}</div>
+          </div>
+        </div>
+      `).join('');
+    });
+
+    // Load Demo Files
+    async function loadFiles() {
+      try {
+        const res = await fetch('/api/files');
+        const files = await res.json();
+        const container = document.getElementById('filesList');
+        
+        if (files.length === 0) {
+          container.innerHTML = `
+            <div class="empty-state" tabindex="0" role="alert" style="padding: 40px 20px;">
+              <div class="empty-icon" aria-hidden="true">📁</div>
+              No demo files found
+            </div>
+          `;
+          return;
+        }
+        
+        container.innerHTML = files.map((file, idx) => `
+          <div class="file-option" role="radio" aria-checked="${idx===0}" tabindex="${idx===0 ? '0' : '-1'}">
+            <input type="radio" name="selectedFile" id="file${idx}" value="${file}" ${idx === 0 ? 'checked' : ''} aria-hidden="true" tabindex="-1">
+            <label for="file${idx}">${file}</label>
+          </div>
+        `).join('');
+      } catch (e) {
+        console.error('Failed to load files', e);
+      }
+    }
+    loadFiles();
+
+    // Create Demo Files
+    document.getElementById('createFilesBtn').addEventListener('click', async () => {
+      const btn = document.getElementById('createFilesBtn');
+      const originalHTML = btn.innerHTML;
+      btn.innerHTML = '<span style="position: relative; z-index: 1;"><span class="btn-icon">⏳</span>Creating...</span>';
+      btn.disabled = true;
+      
+      try {
+        const res = await fetch('/api/create-demo-files', { method: 'POST' });
+        if (res.ok) {
+          btn.innerHTML = '<span style="position: relative; z-index: 1;"><span class="btn-icon">✅</span>Files Created</span>';
+          loadFiles();
+          setTimeout(() => {
+            btn.innerHTML = originalHTML;
+            btn.disabled = false;
+          }, 2200);
+        } else {
+          btn.innerHTML = '<span style="position: relative; z-index: 1;"><span class="btn-icon">❌</span>Failed</span>';
+          setTimeout(() => {
+            btn.innerHTML = originalHTML;
+            btn.disabled = false;
+          }, 2200);
+        }
+      } catch (e) {
+        btn.innerHTML = '<span style="position: relative; z-index: 1;"><span class="btn-icon">❌</span>Error</span>';
+        setTimeout(() => {
+          btn.innerHTML = originalHTML;
+          btn.disabled = false;
+        }, 2200);
+      }
+    });
+
+    // File Upload Handler
+    const uploadForm = document.getElementById('uploadForm');
+    const fileInput = document.getElementById('fileInput');
+    const uploadStatus = document.getElementById('uploadStatus');
+
+    uploadForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      uploadStatus.textContent = '';
+      uploadStatus.classList.add('hidden');
+
+      const file = fileInput.files[0];
+      if (!file) return;
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        const res = await fetch('/api/upload-file', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!res.ok) throw new Error('Upload failed');
+        const data = await res.json();
+
+        uploadStatus.textContent = `Uploaded: ${data.filename}`;
+        uploadStatus.classList.remove('hidden');
+        uploadStatus.classList.remove('text-red-600');
+        uploadStatus.classList.add('text-green-600');
+
+        // Refresh file list
+        loadFiles();
+      } catch (err) {
+        console.error(err);
+        uploadStatus.textContent = 'Upload Failed';
+        uploadStatus.classList.remove('hidden');
+        uploadStatus.classList.remove('text-green-600');
+        uploadStatus.classList.add('text-red-600');
+      }
+    });
+
+    // Scan Functions
+    function getSelectedFile() {
+      const radios = document.getElementsByName('selectedFile');
+      for (const radio of radios) {
+        if (radio.checked) return radio.value;
+      }
+      return null;
+    }
+    function clearResults() {
+      const tbody = document.getElementById('resultsBody');
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="5" role="cell">
+            <div class="empty-state" tabindex="0" role="alert">
+              <div class="empty-icon" aria-hidden="true">⏳</div>
+              Scanning in progress...
+            </div>
+          </td>
+        </tr>
+      `;
+    }
+    function triggerScan(targetClientIds) {
+      const file = getSelectedFile();
+      if (!file) {
+        alert('Please select a file to scan');
+        return;
+      }
+      targetClientIds.forEach(clientId => {
+        socket.emit('scan_file', { clientId, filename: file });
+      });
+      clearResults();
+    }
+    document.getElementById('startAllBtn').addEventListener('click', () => {
+      socket.emit('request_clients', null, (clients) => {
+        const clientIds = clients.map(c => c.clientId);
+        triggerScan(clientIds);
+      });
+    });
+    document.getElementById('startTwoBtn').addEventListener('click', () => {
+      socket.emit('request_clients', null, (clients) => {
+        if (clients.length < 2) {
+          alert('At least 2 clients must be connected');
+          return;
+        }
+        const clientIds = clients.slice(0, 2).map(c => c.clientId);
+        triggerScan(clientIds);
+      });
+    });
+
+    // Display Scan Results
+    socket.on('scan_result_broadcast', result => {
+      const { clientId, clientName, filename, sha256, flagged, reason, timestamp } = result;
+      const tbody = document.getElementById('resultsBody');
+      
+      if (tbody.querySelector('.empty-state')) {
+        tbody.innerHTML = '';
+      }
+      
+      totalScans++;
+      if (flagged) totalThreats++;
+      updateStats(document.getElementById('clientsBadge').textContent.split(' ')[0]);
+      
+      const tr = document.createElement('tr');
+      tr.style.animation = 'slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1)';
+      tr.innerHTML = `
+        <td>
+          <div class="result-client-cell">
+            <div class="result-avatar" aria-hidden="true">${clientName.charAt(0).toUpperCase()}</div>
+            <div class="result-info">
+              <h4>${clientName}</h4>
+              <p>${clientId.slice(0, 12)}</p>
+            </div>
+          </div>
+        </td>
+        <td style="color: #ccc; font-weight: 500;">${filename}</td>
+        <td class="hash-mono">${sha256.slice(0, 32)}...</td>
+        <td>
+          <div class="status-badge ${flagged ? 'status-threat' : 'status-clean'}" role="alert" aria-live="assertive" aria-atomic="true">
+            <span>${flagged ? '⚠️' : '✅'}</span>
+            ${flagged ? 'Threat Detected' : 'Clean'}
+          </div>
+          ${reason ? `<div style="margin-top: 8px; font-size: 12px; color: #888; font-weight: 500;">${reason}</div>` : ''}
+        </td>
+        <td style="color: #888; font-size: 13px; font-weight: 500;">${new Date(timestamp).toLocaleTimeString()}</td>
+      `;
+      
+      tbody.appendChild(tr);
+    });
+    
+  </script>
+</body>
+</html>
